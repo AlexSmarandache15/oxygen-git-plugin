@@ -125,7 +125,7 @@ import ro.sync.exml.workspace.api.standalone.StandalonePluginWorkspace;
 
 /**
  * Implements some basic git functionality like commit, push, pull, retrieve
- * File status(staged, unstaged)
+ * File status(staged, unstaged).
  * 
  * @author Beniamin Savu
  */
