@@ -39,20 +39,14 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.util.StringUtils;
 
 import com.oxygenxml.git.constants.Icons;
-import com.oxygenxml.git.constants.UIConstants;
-import com.oxygenxml.git.options.CredentialsBase;
-import com.oxygenxml.git.options.CredentialsBase.CredentialsType;
 import com.oxygenxml.git.options.OptionsManager;
 import com.oxygenxml.git.service.BranchInfo;
 import com.oxygenxml.git.service.GitAccess;
 import com.oxygenxml.git.service.GitEventAdapter;
 import com.oxygenxml.git.service.GitOperationScheduler;
 import com.oxygenxml.git.service.NoRepositorySelected;
-import com.oxygenxml.git.service.PrivateRepositoryException;
 import com.oxygenxml.git.service.RepoNotInitializedException;
-import com.oxygenxml.git.service.RepositoryUnavailableException;
 import com.oxygenxml.git.service.RevCommitUtil;
-import com.oxygenxml.git.service.SSHPassphraseRequiredException;
 import com.oxygenxml.git.service.entities.FileStatus;
 import com.oxygenxml.git.translator.Tags;
 import com.oxygenxml.git.translator.Translator;
@@ -62,9 +56,7 @@ import com.oxygenxml.git.view.branches.BranchManagementViewPresenter;
 import com.oxygenxml.git.view.branches.BranchesUtil;
 import com.oxygenxml.git.view.dialog.BranchSwitchConfirmationDialog;
 import com.oxygenxml.git.view.dialog.CloneRepositoryDialog;
-import com.oxygenxml.git.view.dialog.LoginDialog;
 import com.oxygenxml.git.view.dialog.OKOtherAndCancelDialog;
-import com.oxygenxml.git.view.dialog.PassphraseDialog;
 import com.oxygenxml.git.view.dialog.SubmoduleSelectDialog;
 import com.oxygenxml.git.view.event.GitController;
 import com.oxygenxml.git.view.event.GitEventInfo;
@@ -318,63 +310,13 @@ public class ToolbarPanel extends JPanel {
             || operation == GitOperation.DISCARD
             || operation == GitOperation.DELETE_BRANCH
             || operation == GitOperation.CREATE_BRANCH
-            || operation == GitOperation.CHECKOUT) {
-          // Update status because we are coming from a detached HEAD
+            || operation == GitOperation.CHECKOUT
+            || operation == GitOperation.CHECKOUT_COMMIT) {
           refresh();
         }
       }
     });
   }
-
-
-  /**
-   * Fetch.
-   *
-   * @param firstRun <code>true</code> if this the first fetch.
-   */
-  private void fetch(boolean firstRun) {
-    try {
-      GitAccess.getInstance().fetch();
-    } catch (SSHPassphraseRequiredException e) {
-      String message = null;
-      if (firstRun) {
-        message = TRANSLATOR.getTranslation(Tags.ENTER_SSH_PASS_PHRASE);
-      } else {
-        message = TRANSLATOR.getTranslation(Tags.PREVIOUS_PASS_PHRASE_INVALID)
-                + " "
-                + TRANSLATOR.getTranslation(Tags.ENTER_SSH_PASS_PHRASE);
-      }
-
-      String passphrase = new PassphraseDialog(message).getPassphrase();
-      if(passphrase != null){
-        // A new pass phase was given. Try again.
-        fetch(false);
-      }
-    } catch (PrivateRepositoryException e) {
-      String loginMessage = null;
-      String hostName = GitAccess.getInstance().getHostName();
-      if (firstRun) {
-        loginMessage = TRANSLATOR.getTranslation(Tags.LOGIN_DIALOG_PRIVATE_REPOSITORY_MESSAGE);
-      } else {
-        loginMessage = TRANSLATOR.getTranslation(Tags.AUTHENTICATION_FAILED) + " ";
-        CredentialsBase gitCredentials = OptionsManager.getInstance().getGitCredentials(hostName);
-        if (gitCredentials.getType() == CredentialsType.USER_AND_PASSWORD) {
-          loginMessage += TRANSLATOR.getTranslation(Tags.CHECK_CREDENTIALS);
-        } else {
-          loginMessage += TRANSLATOR.getTranslation(Tags.CHECK_TOKEN_VALUE_AND_PERMISSIONS);
-        }
-      }
-
-      LoginDialog loginDlg = new LoginDialog(hostName, loginMessage);
-      if (loginDlg.getCredentials() != null) {
-        // New credentials were specified. Try again.
-        fetch(false);
-      }
-    } catch (RepositoryUnavailableException e) {
-      // Nothing we can do about it...
-    }
-  }
-
 
   /**
    * Sets the panel layout and creates all the buttons with their functionality
@@ -410,7 +352,6 @@ public class ToolbarPanel extends JPanel {
     addSettingsButton();
     this.add(gitToolbar, gbc);
 
-    this.setMinimumSize(new Dimension(UIConstants.MIN_PANEL_WIDTH, UIConstants.TOOLBAR_PANEL_HEIGHT));
   }
 
 
@@ -450,13 +391,6 @@ public class ToolbarPanel extends JPanel {
       pushButton.repaint();
       stashButton.repaint();
     });
-
-    repo = null;
-    try {
-      repo = GIT_ACCESS.getRepository();
-    } catch (NoRepositorySelected e) {
-      LOGGER.debug(e, e);
-    }
 
     BranchInfo branchInfo = GIT_ACCESS.getBranchInfo();
     String currentBranchName = branchInfo.getBranchName();
@@ -1281,7 +1215,6 @@ public class ToolbarPanel extends JPanel {
    * @return the branch tool tip text.
    */
   private String getBranchTooltip(int pullsBehind, int pushesAhead, String currentBranchName) {
-    String branchTooltip = null;
 
     String upstreamBranchFromConfig = GIT_ACCESS.getUpstreamBranchShortNameFromConfig(currentBranchName);
     boolean isAnUpstreamBranchDefinedInConfig = upstreamBranchFromConfig != null;
@@ -1294,16 +1227,45 @@ public class ToolbarPanel extends JPanel {
             isAnUpstreamBranchDefinedInConfig
                     ? RepoUtil.getRemoteBranch(upstreamShortestName)
                     : null;
-    boolean existsRemoteBranchForUpstreamDefinedInConfig = remoteBranchRefForUpstreamFromConfig != null;
 
-    branchTooltip = TRANSLATOR.getTranslation(Tags.LOCAL_BRANCH)
-            + " <b>" + currentBranchName + "</b>.<br>"
-            + TRANSLATOR.getTranslation(Tags.UPSTREAM_BRANCH)
-            + " <b>"
-            + (isAnUpstreamBranchDefinedInConfig && existsRemoteBranchForUpstreamDefinedInConfig
+    String branchTooltip = getBranchTooltip(
+        pullsBehind,
+        pushesAhead,
+        currentBranchName,
+        upstreamBranchFromConfig,
+        isAnUpstreamBranchDefinedInConfig,
+        remoteBranchRefForUpstreamFromConfig != null);
+
+    return TextFormatUtil.toHTML(branchTooltip);
+  }
+
+  /**
+   * Get branch tooltip.
+   * 
+   * @param pullsBehind                                   Number of pulls/commits behind.
+   * @param pushesAhead                                   Number of pushes/commits ahead.
+   * @param currentBranchName                             The name of the current branch.
+   * @param upstreamBranchFromConfig                      The upstream branch.
+   * @param isAnUpstreamBranchDefinedInConfig             <code>true</code> an upstream branch is defined in config.
+   * @param existsRemoteBranchForUpstreamDefinedInConfig  <code>true</code> if a remote branch for upstream is defined in config.
+   * 
+   * @return The tooltip message.
+   */
+  private String getBranchTooltip(
+      int pullsBehind,
+      int pushesAhead,
+      String currentBranchName,
+      String upstreamBranchFromConfig,
+      boolean isAnUpstreamBranchDefinedInConfig,
+      boolean existsRemoteBranchForUpstreamDefinedInConfig) {
+    String branchTooltip = TRANSLATOR.getTranslation(Tags.LOCAL_BRANCH)
+        + " <b>" + currentBranchName + "</b>.<br>"
+        + TRANSLATOR.getTranslation(Tags.UPSTREAM_BRANCH)
+        + " <b>"
+        + (isAnUpstreamBranchDefinedInConfig && existsRemoteBranchForUpstreamDefinedInConfig
             ? upstreamBranchFromConfig
-            : TRANSLATOR.getTranslation(Tags.NO_UPSTREAM_BRANCH))
-            + "</b>.<br>";
+                : TRANSLATOR.getTranslation(Tags.NO_UPSTREAM_BRANCH))
+        + "</b>.<br>";
 
     String commitsBehindMessage = "";
     String commitsAheadMessage = "";
@@ -1326,9 +1288,6 @@ public class ToolbarPanel extends JPanel {
       }
       branchTooltip += commitsAheadMessage;
     }
-
-    branchTooltip = TextFormatUtil.toHTML(branchTooltip);
-
     return branchTooltip;
   }
 
@@ -1440,48 +1399,27 @@ public class ToolbarPanel extends JPanel {
    *
    * @return The tooltip text.
    */
-  private String updateBranchSelectionToolTip(String currentBranchName,
-                                              boolean isAnUpstreamBranchDefinedInConfig ,
-                                              boolean existsRemoteBranchForUpstreamDefinedInConfig,
-                                              String upstreamBranchFromConfig
-  ) {
-    String branchTooltip = null;
+  private String updateBranchSelectionToolTip(
+      String currentBranchName,
+      boolean isAnUpstreamBranchDefinedInConfig ,
+      boolean existsRemoteBranchForUpstreamDefinedInConfig,
+      String upstreamBranchFromConfig) {
 
-    branchTooltip = TRANSLATOR.getTranslation(Tags.LOCAL_BRANCH)
-            + " <b>" + currentBranchName + "</b>.<br>"
-            + TRANSLATOR.getTranslation(Tags.UPSTREAM_BRANCH)
-            + " <b>"
-            + (isAnUpstreamBranchDefinedInConfig && existsRemoteBranchForUpstreamDefinedInConfig
-            ? upstreamBranchFromConfig
-            : TRANSLATOR.getTranslation(Tags.NO_UPSTREAM_BRANCH))
-            + "</b>.<br>";
-
-    String commitsBehindMessage = "";
-    String commitsAheadMessage = "";
+    String branchTooltip = getBranchTooltip(
+        pullsBehind,
+        pushesAhead,
+        currentBranchName,
+        upstreamBranchFromConfig,
+        isAnUpstreamBranchDefinedInConfig,
+        existsRemoteBranchForUpstreamDefinedInConfig);
+    
     if (isAnUpstreamBranchDefinedInConfig && existsRemoteBranchForUpstreamDefinedInConfig) {
-      if (pullsBehind == 0) {
-        commitsBehindMessage = TRANSLATOR.getTranslation(Tags.TOOLBAR_PANEL_INFORMATION_STATUS_UP_TO_DATE);
-      } else if (pullsBehind == 1) {
-        commitsBehindMessage = TRANSLATOR.getTranslation(Tags.ONE_COMMIT_BEHIND);
-      } else {
-        commitsBehindMessage = MessageFormat.format(TRANSLATOR.getTranslation(Tags.COMMITS_BEHIND), pullsBehind);
-      }
-      branchTooltip += commitsBehindMessage + "<br>";
-
-      if (pushesAhead == 0) {
-        commitsAheadMessage = TRANSLATOR.getTranslation(Tags.NOTHING_TO_PUSH);
-      } else if (pushesAhead == 1) {
-        commitsAheadMessage = TRANSLATOR.getTranslation(Tags.ONE_COMMIT_AHEAD);
-      } else {
-        commitsAheadMessage = MessageFormat.format(TRANSLATOR.getTranslation(Tags.COMMITS_AHEAD), pushesAhead);
-      }
-      branchTooltip += commitsAheadMessage + "<br>";
+      branchTooltip += "<br>";
     }
 
     branchTooltip += "<br>" + TRANSLATOR.getTranslation(Tags.BRANCH_MANAGER_BUTTON_TOOL_TIP);
-    branchTooltip = TextFormatUtil.toHTML(branchTooltip);
 
-    return branchTooltip;
+    return TextFormatUtil.toHTML(branchTooltip);
   }
   
   

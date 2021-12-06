@@ -72,7 +72,20 @@ public abstract class CredentialsBase implements ExternalPersistentObject {
     } catch (CloneNotSupportedException e) {
       // Should not happen.
     }
-    return null;
+    return new CredentialsBase(host != null ? host : "") {
+      @Override
+      public String[] getNotPersistentFieldNames() {
+        return new String[0];
+      }
+      @Override
+      public void checkValid() {
+        // Nothing
+      }
+      @Override
+      public CredentialsType getType() {
+        return CredentialsBase.this.getType();
+      }
+    };
   }
   
 }

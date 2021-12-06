@@ -1439,11 +1439,11 @@ public class Tags {
   /**
    * The title for the create Tag Commit dialog (Create Tag)
    */
-  public static final String CREATE_TAG_COMMIT_TITLE = "Create_Tag_Commit_Title"; 
+  public static final String CREATE_TAG = "Create_Tag"; 
   /**
    * The message in the label for Tag title
    */
-  public static final String CREATE_TAG_TITLE_LABEL = "Create_Tag_Title_Label"; 
+  public static final String TAG_NAME = "Tag_name"; 
   /**
    * The message for the checkbox for Tag pushing
    */
@@ -1463,7 +1463,6 @@ public class Tags {
    * The message for error when we have a tag with invalid chars
    */
   public static final String TAG_CONTAINS_INVALID_CHARS = "Tag_Contains_Invalid_Chars";
-  
   
   /**
    * The first column name in the table with the tags (column for the tag name)
@@ -1534,4 +1533,53 @@ public class Tags {
    */
   public static final String DELETE_TAG_DIALOG_MESSAGE= "Delete_Tag_Dialog_Message"; 
   
+  /**
+   * History graph column title.
+   */
+  public static final String GRAPH = "Graph";
+  
+  /**
+   * Column title in list stash.
+   */
+  public static final String CREATION_DATE = "Creation_Date";
+  
+  /**
+   * The message for error when we have a branch with spaces.
+   */
+  public static final String BRANCH_CONTAINS_SPACES = "Branch_Contains_Spaces";
+  
+  /**
+   * The message for error when we have a branch with invalid chars.
+   */
+  public static final String BRANCH_CONTAINS_INVALID_CHARS = "Branch_Contains_Invalid_Chars";
+  
+  /**
+   * The message for error when we have an empty name for branch.
+   */
+  public static final String EMPTY_BRANCH_NAME = "Empty_Branch_Name";
+  
+  /**
+   * The message for enter the branch name.
+   */
+  public static final String ENTER_BRANCH_NAME = "Enter_Branch_Name";
+  
+  /**
+   * The warning message about detached HEAD.
+   */
+  public static final String DETACHED_HEAD_WARNING_MESSAGE = "Detached_HEAD_Warning_Message";
+  
+  /**
+   * The the message displayed when the checkout commit is attempted and there are uncommited changes.
+   */
+  public static final String UNCOMMITED_CHANGES_WHEN_CHECKOUT_COMMIT = "Uncommited_changes_when_checkout_commit";
+
+  /**
+   * Tag.
+   */
+  public static final String TAG = "Tag";
+  
+  /**
+   * Create a new branch option.
+   */
+  public static final String CREATE_A_NEW_BRANCH = "Create_A_New_Branch";
 }

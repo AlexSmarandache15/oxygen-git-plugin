@@ -3,7 +3,6 @@ package com.oxygenxml.git.service;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,11 +21,14 @@ import java.util.concurrent.ScheduledFuture;
 import org.apache.log4j.Logger;
 import org.apache.sshd.common.SshConstants;
 import org.apache.sshd.common.SshException;
+import org.eclipse.jgit.annotations.NonNull;
+import org.eclipse.jgit.annotations.Nullable;
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.CheckoutCommand.Stage;
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CreateBranchCommand;
+import org.eclipse.jgit.api.CreateBranchCommand.SetupUpstreamMode;
 import org.eclipse.jgit.api.DeleteBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand.ListMode;
@@ -108,6 +110,7 @@ import com.oxygenxml.git.translator.Tags;
 import com.oxygenxml.git.translator.Translator;
 import com.oxygenxml.git.utils.FileUtil;
 import com.oxygenxml.git.utils.RepoUtil;
+import com.oxygenxml.git.utils.URIUtil;
 import com.oxygenxml.git.view.dialog.FileStatusDialog;
 import com.oxygenxml.git.view.dialog.ProgressDialog;
 import com.oxygenxml.git.view.event.BranchGitEventInfo;
@@ -117,6 +120,7 @@ import com.oxygenxml.git.view.event.GitOperation;
 import com.oxygenxml.git.view.event.PullType;
 import com.oxygenxml.git.view.event.WorkingCopyGitEventInfo;
 import com.oxygenxml.git.view.history.CommitCharacteristics;
+import com.oxygenxml.git.view.history.RenameTracker;
 import com.oxygenxml.git.view.stash.StashApplyFailureWithStatusException;
 import com.oxygenxml.git.view.stash.StashApplyStatus;
 
@@ -125,7 +129,7 @@ import ro.sync.exml.workspace.api.standalone.StandalonePluginWorkspace;
 
 /**
  * Implements some basic git functionality like commit, push, pull, retrieve
- * File status(staged, unstaged).
+ * File status(staged, unstaged)
  * 
  * @author Beniamin Savu
  */
@@ -1097,7 +1101,6 @@ public class GitAccess {
 		if (!getConflictingFiles().isEmpty()) {
 			pullResponseToReturn.setStatus(PullStatus.REPOSITORY_HAS_CONFLICTS);
 		} else {
-		  git.reset().call();
 
 		  // Call "Pull"
 		  Repository repository = git.getRepository();
@@ -1270,7 +1273,7 @@ public class GitAccess {
 				fetchResultStringBuilder.append(MessageFormat.format(TRANSLATOR.getTranslation(Tags.CANNOT_LOCK_REF), trackingRefUpdate.getLocalName())).append(" ");
 				try {
 					String repoDir = getRepository().getDirectory().getAbsolutePath();
-					File lockFile = new File(repoDir, trackingRefUpdate.getLocalName() + ".lock");
+					File lockFile = new File(repoDir, trackingRefUpdate.getLocalName() + ".lock"); // NOSONAR findsecbugs:PATH_TRAVERSAL_IN - false positive
 					fetchResultStringBuilder.append(MessageFormat.format(TRANSLATOR.getTranslation(Tags.UNABLE_TO_CREATE_FILE), lockFile.getAbsolutePath())).append(" ");
 					if (lockFile.exists()) {
 						fetchResultStringBuilder.append(TRANSLATOR.getTranslation(Tags.FILE_EXISTS)).append("\n");
@@ -1306,9 +1309,11 @@ public class GitAccess {
       String selectedRepository = OptionsManager.getInstance().getSelectedRepository();
       for (DiffEntry diffEntry : diffs) {
         if (diffEntry.getChangeType() == ChangeType.ADD) {
-          pulledFilesParentDirs.add(new File(selectedRepository, diffEntry.getNewPath()).getParentFile());
+          pulledFilesParentDirs.add(
+              new File(selectedRepository, diffEntry.getNewPath()).getParentFile()); // NOSONAR findsecbugs:PATH_TRAVERSAL_IN - false positive
         } else if (diffEntry.getChangeType() == ChangeType.DELETE) {
-          pulledFilesParentDirs.add(new File(selectedRepository, diffEntry.getOldPath()).getParentFile());
+          pulledFilesParentDirs.add(
+              new File(selectedRepository, diffEntry.getOldPath()).getParentFile()); // NOSONAR findsecbugs:PATH_TRAVERSAL_IN - false positive
         }
       }
       // Refresh the Project view
@@ -1545,30 +1550,11 @@ public class GitAccess {
 			    url = storedConfig.getString(ConfigConstants.CONFIG_KEY_REMOTE, iterator.next(), "url");
 			  }
 			}
-			hostName =extractHostName(url);
+			hostName = URIUtil.extractHostName(url);
 		}		
 		return hostName;
 	}
 
-	
-	/**
-	 * Extract the host for given URL or an empty string
-	 * 
-	 * @param url The URL where the host is extracted from.
-	 * 
-	 * @return The host.
-	 */
-	String extractHostName(String url) {
-		String hostName = "";
-		try {
-			hostName = new URIish(url).getHost();
-		} catch (URISyntaxException e) {
-			LOGGER.debug(e, e);
-		}
-		
-		return hostName;
-	}
-	
 	
 	/**
 	 * Finds the last local commit in the repository
@@ -2055,7 +2041,7 @@ public class GitAccess {
 	  return repository.getConfig().getString("branch", branchName, ConfigConstants.CONFIG_KEY_REMOTE);
 	}
 	
-	 /**
+	/**
    * Get the URL of the current remote.
    * 
    * @return The URL of the remote.
@@ -2067,6 +2053,21 @@ public class GitAccess {
     return repository.getConfig().getString(ConfigConstants.CONFIG_KEY_REMOTE, Constants.DEFAULT_REMOTE_NAME, "url");
   }
 
+  /**
+   * Get the URL of the current remote.
+   * 
+   * @param remote The remote.
+   * 
+   * @return The URL of the remote.
+   * 
+   * @throws NoRepositorySelected 
+   */
+  public String getRemoteURLFromConfig(@NonNull final String remote) throws NoRepositorySelected {
+    Repository repository = GitAccess.getInstance().getRepository();
+    return repository.getConfig().getString(ConfigConstants.CONFIG_KEY_REMOTE, 
+        remote, ConfigConstants.CONFIG_KEY_URL);
+  }
+  
 	/**
 	 * Gets the full remote-tracking branch name or null is the local branch is not tracking a remote branch.
 	 * 
@@ -2079,7 +2080,7 @@ public class GitAccess {
 	public String getUpstreamBranchNameFromConfig(String localBranchShortName) {
 	  return git != null ? RevCommitUtil.getUpstreamBranchName(git.getRepository(), localBranchShortName) : null;
   }
-	
+
 	 /**
    * Gets Get a shortened more user friendly ref name for the remote-tracking branch name or null is the local branch is not tracking a remote branch.
    * 
@@ -2256,15 +2257,16 @@ public class GitAccess {
     }
   }
   
-  /**
+   /**
 	 * Compute a Vector with the characteristics of each commit.
 	 * 
 	 * @param filePath A resource for which we are interested in its history. If <code>null</code>, 
 	 * the repository history will be computed.
+	 * @param The rename tracker to follow rename path changes.
 	 * 
 	 * @return a Vector with commits characteristics of the current repository.
 	 */
-	public List<CommitCharacteristics> getCommitsCharacteristics(String filePath) {
+	public List<CommitCharacteristics> getCommitsCharacteristics(String filePath, RenameTracker... renameTracker) {
 		List<CommitCharacteristics> revisions = new ArrayList<>();
 
 		try {
@@ -2272,8 +2274,9 @@ public class GitAccess {
 			if (filePath == null && git.status().call().hasUncommittedChanges()) {
 				revisions.add(UNCOMMITED_CHANGES);
 			}
-
-			RevCommitUtil.collectCurrentBranchRevisions(filePath, revisions, repository);
+            
+			RenameTracker renTracker = renameTracker.length == 0 ? null : renameTracker[0];
+			RevCommitUtil.collectCurrentBranchRevisions(filePath, revisions, repository, renTracker);
 		} catch (NoWorkTreeException | GitAPIException | NoRepositorySelected | IOException e) {
 			LOGGER.error(e, e);
 		}
@@ -2316,9 +2319,9 @@ public class GitAccess {
 				}
 				Iterable<RevCommit> logs = log.call();
 				tagList.add(tagName);
-				commitTagMap.put(
-						logs.iterator().next().getId().abbreviate(RevCommitUtilBase.ABBREVIATED_COMMIT_LENGTH).name(),
-						tagList);
+				String commitToPut = logs.iterator().next().getId().abbreviate(RevCommitUtilBase.ABBREVIATED_COMMIT_LENGTH).name();
+				List<String> tags = commitTagMap.computeIfAbsent(commitToPut, key -> new ArrayList<>());
+				tags.addAll(tagList);
 			}
 		}
 		return commitTagMap;
@@ -2352,8 +2355,11 @@ public class GitAccess {
         int refIdx = indexOfPrefix + prefix.length();
         String branchName = ref.getName().substring(refIdx);
         
-        String commit = ref.getObjectId().getName().substring(0, SHORT_COMMIT_ID_LENGTH);
-        branchMap.computeIfAbsent(commit, t -> new ArrayList<>()).add(branchName);
+        ObjectId objectId = ref.getObjectId();
+        if (objectId != null) {
+          String commit = objectId.getName().substring(0, SHORT_COMMIT_ID_LENGTH);
+          branchMap.computeIfAbsent(commit, t -> new ArrayList<>()).add(branchName);
+        }
       }
     }
 
@@ -2789,17 +2795,79 @@ public class GitAccess {
 	 * @throws GitAPIException
 	 */
 	public void deleteTag(String name) throws GitAPIException  {
-	  fireOperationAboutToStart(new GitEventInfo(GitOperation.TAG_DELETE));
-	  try {
-      getGit()
-        .tagDelete()
-        .setTags(name)
-        .call();
-      fireOperationSuccessfullyEnded(new GitEventInfo(GitOperation.TAG_DELETE));
-    } catch (GitAPIException e) {
-      LOGGER.error(e, e);
-      fireOperationFailed(new GitEventInfo(GitOperation.TAG_DELETE), e);
-      throw e;
-    }
+		fireOperationAboutToStart(new GitEventInfo(GitOperation.TAG_DELETE));
+		try {
+			getGit()
+			.tagDelete()
+			.setTags(name)
+			.call();
+			fireOperationSuccessfullyEnded(new GitEventInfo(GitOperation.TAG_DELETE));
+		} catch (GitAPIException e) {
+			LOGGER.error(e, e);
+			fireOperationFailed(new GitEventInfo(GitOperation.TAG_DELETE), e);
+			throw e;
+		}
 	}
+	
+	
+	/**
+	 * Used to do a checkout commit.
+	 * 
+	 * @param startPoint                    The start commit.
+	 * @param branchName                    The new branch name(if shouldCreateANewBranch is <code>true</code>).
+	 *
+	 * @throws GitAPIException Errors while invoking git commands.
+	 */
+	public void checkoutCommit(RevCommit startPoint, 
+			String branchName) throws GitAPIException {
+		fireOperationAboutToStart(new GitEventInfo(GitOperation.CHECKOUT_COMMIT));
+		CheckoutCommand checkoutCommand = this.git.checkout();
+		checkoutCommand.setStartPoint(startPoint);
+		doCheckoutCommit(checkoutCommand, branchName);
+	}
+	
+	
+	/**
+	 * Used to do a checkout commit.
+	 * 
+	 * @param startPoint                    The start commit. <code>null</code> the index is used.
+	 * @param branchName                    The new branch name. <code>null</code> to do a headless checkout.
+	 *
+	 * @throws GitAPIException Errors while invoking git commands.
+	 */
+	public void checkoutCommit(@Nullable String startPoint, 
+			@Nullable String branchName) throws GitAPIException {
+		fireOperationAboutToStart(new GitEventInfo(GitOperation.CHECKOUT_COMMIT));
+		CheckoutCommand checkoutCommand = this.git.checkout();
+		checkoutCommand.setStartPoint(startPoint);
+		doCheckoutCommit(checkoutCommand, branchName);
+	}
+	
+	
+	/**
+	 * Used to do a checkout commit. If the branchName is null, no branch will de created.
+	 * 
+	 * @param checkoutCommand         Checkout command to do the checkout.
+	 * @param branchName              The new branch name.
+	 * 
+	 * @throws GitAPIException Errors while invoking git commands.
+	 */
+	private void doCheckoutCommit(@NonNull CheckoutCommand checkoutCommand,
+			@Nullable String branchName) throws GitAPIException {
+		checkoutCommand.setUpstreamMode(SetupUpstreamMode.SET_UPSTREAM);
+		if(branchName != null) {
+			checkoutCommand.setCreateBranch(true).setName(branchName);
+		} else {
+			checkoutCommand.setCreateBranch(false).setName(Constants.HEAD);
+		}
+		try {
+			checkoutCommand.call();
+		} catch(GitAPIException e) {
+			fireOperationFailed(new GitEventInfo(GitOperation.CHECKOUT_COMMIT), e);
+			throw e;
+		}
+		
+		fireOperationSuccessfullyEnded(new GitEventInfo(GitOperation.CHECKOUT_COMMIT));
+	}
+
 }

@@ -62,7 +62,6 @@ import com.oxygenxml.git.view.GitTreeNode;
 import com.oxygenxml.git.view.event.GitEventInfo;
 import com.oxygenxml.git.view.event.GitOperation;
 import com.oxygenxml.git.view.history.HistoryController;
-import com.oxygenxml.git.view.util.HiDPIUtil;
 import com.oxygenxml.git.view.util.TreeUtil;
 import com.oxygenxml.git.view.util.UIUtil;
 
@@ -79,6 +78,26 @@ import ro.sync.exml.workspace.api.standalone.ui.Tree;
  * @author Beniamin Savu
  */
 public class ChangesPanel extends JPanel {
+
+  /**
+   * The size of the left empty border for the changes tree.
+   */
+  private static final int TREE_LEFT_EMPTY_BORDER_SIZE = 5;
+
+  /**
+   * Scroll pane height for Windows and Linux.
+   */
+  private static final int CHANGES_SCROLL_PANE_HEIGHT_WIN_LINUX = 220;
+
+  /**
+   * Scroll pane height for Mac OSX.
+   */
+  private static final int CHANGES_SCROLL_PANE_HEIGHT_MAC_OS = 160;
+
+  /**
+   * Scroll pane width.
+   */
+  private static final int CHANGES_SCROLL_PANE_WIDTH = 200;
 
   /**
    * Provides the selected resources, sometimes filtered.
@@ -169,7 +188,7 @@ public class ChangesPanel extends JPanel {
 	/**
 	 * The translator for the messages that are displayed in this panel
 	 */
-	private final static Translator TRANSLATOR = Translator.getInstance();
+	private static final Translator TRANSLATOR = Translator.getInstance();
 	
 	/**
 	 * Popup menu listener for the tree and table context menu.
@@ -225,9 +244,7 @@ public class ChangesPanel extends JPanel {
     gitController.addGitListener(new GitEventAdapter() {
       @Override
       public void operationAboutToStart(GitEventInfo info) {
-        if (info.getGitOperation() == GitOperation.OPEN_WORKING_COPY) {
-          // TODO Disable widgets to avoid unwanted actions.
-        }
+        // TODO Disable widgets to avoid unwanted actions if the operation is GitOperation.OPEN_WORKING_COPY.
       }
       @Override
       public void operationSuccessfullyEnded(GitEventInfo info) {
@@ -243,13 +260,7 @@ public class ChangesPanel extends JPanel {
               if (repository != null) {
                 
                 gitController.asyncTask(
-                    () -> {
-                      if (forStagedResources) {
-                        return gitAccess.getStagedFiles();
-                      } else {
-                        return gitAccess.getUnstagedFiles();
-                      }
-                    }, 
+                    () -> forStagedResources ? gitAccess.getStagedFiles() : gitAccess.getUnstagedFiles(), 
                     this::refresh, 
                     ex -> refresh(Collections.emptyList()));
               }
@@ -273,6 +284,7 @@ public class ChangesPanel extends JPanel {
             break;
         }
       }
+      
       /**
        * Update models with newly detected files.
        * 
@@ -466,10 +478,8 @@ public class ChangesPanel extends JPanel {
 		  }
 		});
 
-		int minWidth = HiDPIUtil.isRetinaNoImplicitSupport() 
-		    ? (int) (UIConstants.MIN_PANEL_WIDTH * HiDPIUtil.getScalingFactor())
-		    : UIConstants.MIN_PANEL_WIDTH;
-		this.setMinimumSize(new Dimension(minWidth, UIConstants.STAGING_PANEL_MIN_HEIGHT));
+
+		this.setMinimumSize(new Dimension(getMinimumSize().width, UIConstants.STAGING_PANEL_MIN_HEIGHT));
 	}
 	
 	private void addTopPanel(GridBagConstraints gbc) {
@@ -635,10 +645,22 @@ public class ChangesPanel extends JPanel {
     // file
     // will be opened in the Oxygen.
     filesTable.addMouseListener(new MouseAdapter() {
+     
       @Override
       public void mousePressed(MouseEvent e) {
         // For MacOS the popup trigger comes on mouse pressed.
         handleContexMenuEvent(e);
+      }
+      
+      @Override
+      public void mouseClicked(MouseEvent e) {
+    	  if (e.getClickCount() == 2 && !SwingUtilities.isRightMouseButton(e)) {
+    		  Point point = new Point(e.getX(), e.getY());
+    		  int clickedRow = filesTable.rowAtPoint(point);
+    		  if (clickedRow != -1) {
+    			  openFileInCompareEditor(clickedRow);
+    		  }
+    	  }
       }
       
       @Override
@@ -649,14 +671,7 @@ public class ChangesPanel extends JPanel {
         
         // Maybe the event is a pop-up trigger
         handleContexMenuEvent(e);
-        // Maybe (not pop-up trigger) double click
-        if (!e.isPopupTrigger() && e.getClickCount() == 2) {
-          Point point = new Point(e.getX(), e.getY());
-          int clickedRow = filesTable.rowAtPoint(point);
-          if (clickedRow != -1) {
-            openFileInCompareEditor(clickedRow);
-          }
-        }
+       
       }
 
       /**
@@ -729,7 +744,10 @@ public class ChangesPanel extends JPanel {
     scrollPane = new JScrollPane(filesTable);
     scrollPane.add(tree);
     scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-    scrollPane.setPreferredSize(new Dimension(200, PlatformDetectionUtil.isMacOS() ? 160 : 220));
+    scrollPane.setPreferredSize(
+        new Dimension(
+            CHANGES_SCROLL_PANE_WIDTH,
+            PlatformDetectionUtil.isMacOS() ? CHANGES_SCROLL_PANE_HEIGHT_MAC_OS : CHANGES_SCROLL_PANE_HEIGHT_WIN_LINUX));
     UIUtil.setDefaultScrollPaneBorder(scrollPane);
     filesTable.setFillsViewportHeight(true);
     this.add(scrollPane, gbc);
@@ -1153,7 +1171,7 @@ public class ChangesPanel extends JPanel {
 	  
 	  t.setCellRenderer(new ChangesTreeCellRenderer(() -> isContextualMenuShowing));
 	  t.setModel(new StagingResourcesTreeModel(gitController, null, forStagedResources, null));
-	  t.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
+	  t.setBorder(BorderFactory.createEmptyBorder(0, TREE_LEFT_EMPTY_BORDER_SIZE, 0, 0));
 	  t.setLargeModel(true);
 	  
     return t;

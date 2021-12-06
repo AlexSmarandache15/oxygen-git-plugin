@@ -107,6 +107,12 @@ public class BranchManagementPanel extends JPanel {
    * Provides the actions for a node in the branches tree.
    */
   private BranchTreeMenuActionsProvider branchesTreeActionProvider;
+  
+  /**
+   * A cache with informations about branches.
+   */
+  private final BranchesCache cache = new BranchesCache();
+  
 
   /**
    * Constructor.
@@ -119,12 +125,13 @@ public class BranchManagementPanel extends JPanel {
       @Override
       public void operationSuccessfullyEnded(GitEventInfo info) {
         GitOperation operation = info.getGitOperation();
-        if (operation == GitOperation.OPEN_WORKING_COPY
-            || operation == GitOperation.CREATE_BRANCH
+        if (operation == GitOperation.CREATE_BRANCH
             || operation == GitOperation.CHECKOUT
             || operation == GitOperation.DELETE_BRANCH
-          ) {
+            || operation == GitOperation.CHECKOUT_COMMIT) {
           SwingUtilities.invokeLater(BranchManagementPanel.this::refreshBranches);
+        } else if (operation == GitOperation.OPEN_WORKING_COPY) {
+          SwingUtilities.invokeLater(BranchManagementPanel.this::showBranches);
         }
       }
     });
@@ -265,7 +272,7 @@ public class BranchManagementPanel extends JPanel {
   private void createBranchesTree() {
     branchesTree = new Tree(new BranchManagementTreeModel(null, allBranches));
     ToolTipManager.sharedInstance().registerComponent(branchesTree);
-    branchesTree.setCellRenderer(new BranchesTreeCellRenderer(() -> isContextMenuShowing, () -> currentBranchName));
+    branchesTree.setCellRenderer(new BranchesTreeCellRenderer(cache, () -> isContextMenuShowing, () -> currentBranchName));
     branchesTree.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
     branchesTree.setDragEnabled(false);
     branchesTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
@@ -307,7 +314,7 @@ public class BranchManagementPanel extends JPanel {
     gbc.fill = GridBagConstraints.BOTH;
     add(branchesTreeScrollPane, gbc);
 
-    setMinimumSize(new Dimension(UIConstants.MIN_PANEL_WIDTH, UIConstants.COMMIT_PANEL_PREF_HEIGHT));
+    setMinimumSize(new Dimension(getMinimumSize().width, UIConstants.COMMIT_PANEL_PREF_HEIGHT));
   }
 
   /**
@@ -317,7 +324,7 @@ public class BranchManagementPanel extends JPanel {
     Action refreshAction = new AbstractAction() {
       @Override
       public void actionPerformed(ActionEvent e) {
-        SwingUtilities.invokeLater(BranchManagementPanel.this::showBranches);
+        SwingUtilities.invokeLater(BranchManagementPanel.this::refreshBranches);
       }
     };
     refreshAction.putValue(Action.SMALL_ICON, Icons.getIcon(Icons.REFRESH_ICON));
@@ -384,10 +391,7 @@ public class BranchManagementPanel extends JPanel {
         }
       }
     }
-    SwingUtilities.invokeLater(() -> {
-      updateTreeView(remainingBranches);
-      TreeUtil.expandAllNodes(branchesTree, 0, branchesTree.getRowCount());
-    });
+    SwingUtilities.invokeLater(() -> updateTreeView(remainingBranches));
   }
 
   /**
@@ -395,7 +399,10 @@ public class BranchManagementPanel extends JPanel {
    */
   public void showBranches() {
     refreshBranches();
-    branchesTree.setVisible(true);
+    SwingUtilities.invokeLater(() -> {
+      TreeUtil.expandAllNodes(branchesTree, 0, branchesTree.getRowCount());
+      branchesTree.setVisible(true);
+    });
   }
   
   /**
@@ -414,6 +421,7 @@ public class BranchManagementPanel extends JPanel {
    * Refresh branches.
    */
   public void refreshBranches() {
+    cache.reset();
     currentBranchName = GitAccess.getInstance().getBranchInfo().getBranchName();
     allBranches = getAllBranches();
     filterTree(searchField.getText());

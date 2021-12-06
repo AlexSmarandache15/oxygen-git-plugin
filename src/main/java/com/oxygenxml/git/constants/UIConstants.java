@@ -65,21 +65,6 @@ public class UIConstants {
   public static final int COMPONENT_RIGHT_LARGE_PADDING = 5;
 	
 	/**
-	 * Minimum panels width.
-	 */
-	public static final int MIN_PANEL_WIDTH = 320;
-	
-	/**
-	 * Toolbar panel height.
-	 */
-	public static final int TOOLBAR_PANEL_HEIGHT = 35;
-	
-	/**
-	 * Working copy panel height.
-	 */
-	public static final int WORKINGCOPY_PANEL_HEIGHT = 35;
-	
-	/**
 	 * Changes panel minimum height.
 	 */
 	public static final int STAGING_PANEL_MIN_HEIGHT = 75;

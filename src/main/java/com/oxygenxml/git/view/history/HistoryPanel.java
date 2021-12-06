@@ -49,6 +49,7 @@ import org.eclipse.jgit.lib.ConfigConstants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revplot.PlotCommit;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.util.StringUtils;
 
@@ -71,8 +72,7 @@ import com.oxygenxml.git.view.FilterTextField;
 import com.oxygenxml.git.view.event.GitController;
 import com.oxygenxml.git.view.event.GitEventInfo;
 import com.oxygenxml.git.view.event.GitOperation;
-import com.oxygenxml.git.view.staging.StagingResourcesTableCellRenderer;
-import com.oxygenxml.git.view.staging.StagingResourcesTableModel;
+import com.oxygenxml.git.view.history.graph.CommitsGraphCellRender;
 import com.oxygenxml.git.view.util.HiDPIUtil;
 import com.oxygenxml.git.view.util.TreeUtil;
 import com.oxygenxml.git.view.util.UIUtil;
@@ -143,7 +143,13 @@ public class HistoryPanel extends JPanel {
    * Top panel (with the "Showing history" label and the "Refresh" action
    */
   private JPanel topPanel;
+  
+  /**
+   * The graph cell render.
+   */
+  private final CommitsGraphCellRender graphCellRender;
 
+  
   /**
    * Constructor.
    * 
@@ -151,9 +157,14 @@ public class HistoryPanel extends JPanel {
    */
   public HistoryPanel(GitController gitCtrl) {
     setLayout(new BorderLayout());
-
+    
+    graphCellRender = new CommitsGraphCellRender();
+    
     contextualMenuPresenter = new HistoryViewContextualMenuPresenter(gitCtrl);
     historyTable = new Table();
+    
+    historyTable.setIntercellSpacing(new Dimension(0, 0)); 
+    historyTable.setShowGrid(false);
     historyTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     historyTable.addMouseListener(new MouseAdapter() {
       @Override
@@ -269,6 +280,7 @@ public class HistoryPanel extends JPanel {
           case REVERT_COMMIT:
           case TAG_COMMIT:
           case TAG_DELETE:
+          case CHECKOUT_COMMIT:
             refresh();
             break;
           default:
@@ -289,6 +301,7 @@ public class HistoryPanel extends JPanel {
     add(centerSplitPane, BorderLayout.CENTER);
   }
 
+  
   /**
    * Adds a hook to refresh the models if the editor is part of the Git working
    * copy.
@@ -367,7 +380,7 @@ public class HistoryPanel extends JPanel {
    * @return The table that presents the files.
    */
   private JTable createAffectedFilesTable() {
-    JTable table = UIUtil.createResourcesTable(new StagingResourcesTableModel(null, true), () -> false);
+    JTable table = UIUtil.createResourcesTable(new HistoryTableAffectedFilesModel(), () -> false);
     table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
     table.addMouseListener(new MouseAdapter() {
@@ -391,7 +404,7 @@ public class HistoryPanel extends JPanel {
           if (rowAtPoint != -1) {
             updateTableSelection(table, rowAtPoint);
 
-            StagingResourcesTableModel model = (StagingResourcesTableModel) table.getModel();
+            HistoryTableAffectedFilesModel model = (HistoryTableAffectedFilesModel) table.getModel();
             int convertedSelectedRow = table.convertRowIndexToModel(rowAtPoint);
             FileStatus file = model.getFileStatus(convertedSelectedRow);
 
@@ -424,7 +437,7 @@ public class HistoryPanel extends JPanel {
     if (rowAtPoint != -1) {
       updateTableSelection(affectedFilesTable, rowAtPoint);
 
-      StagingResourcesTableModel model = (StagingResourcesTableModel) affectedFilesTable.getModel();
+      HistoryTableAffectedFilesModel model = (HistoryTableAffectedFilesModel) affectedFilesTable.getModel();
       int convertedSelectedRow = affectedFilesTable.convertRowIndexToModel(rowAtPoint);
       FileStatus file = model.getFileStatus(convertedSelectedRow);
 
@@ -467,6 +480,7 @@ public class HistoryPanel extends JPanel {
       } catch (IOException | GitAPIException e) {
         LOGGER.error(e, e);
       }
+  
     }
   }
 
@@ -542,6 +556,7 @@ public class HistoryPanel extends JPanel {
         TableModel tableModel = historyTable.getModel();
         if(tableModel instanceof HistoryCommitTableModel) {
           HistoryCommitTableModel historyTableModel = (HistoryCommitTableModel) tableModel;
+          graphCellRender.setShouldBePainted(text == null || text.isEmpty());
           historyTableModel.filterChanged(text);
         }
       }
@@ -603,6 +618,7 @@ public class HistoryPanel extends JPanel {
    *                 view already presents the history for the given resource.
    */
   private void showHistory(String filePath, boolean force) {
+	  
     Translator translator = Translator.getInstance();
 
     SwingUtilities.invokeLater(() -> updateSelectionMode(filePath));
@@ -625,8 +641,6 @@ public class HistoryPanel extends JPanel {
           historyLabelMessage += " " + translator.getTranslation(Tags.FILE) + ": " + directory.getName() + ".";
         }
         
-        ((StagingResourcesTableCellRenderer)affectedFilesTable.getDefaultRenderer(FileStatus.class)).setSearchedFilePath(filePath);
-        
         historyInfoLabel.setText(TreeUtil.getWordToFitInWidth(historyLabelMessage,
             historyInfoLabel.getFontMetrics(historyInfoLabel.getFont()),
             this.getWidth() / topPanel.getComponentCount()));
@@ -638,15 +652,19 @@ public class HistoryPanel extends JPanel {
           historyTable.getSelectionModel().removeListSelectionListener(revisionDataUpdater);
         }
 
-        StagingResourcesTableModel dataModel = (StagingResourcesTableModel) affectedFilesTable.getModel();
+        HistoryTableAffectedFilesModel dataModel = (HistoryTableAffectedFilesModel) affectedFilesTable.getModel();
         dataModel.setFilesStatus(Collections.emptyList());
-        ((StagingResourcesTableModel)affectedFilesTable.getModel()).setSearchedPath(filePath);
-        
+        FileHistoryPresenter fileHistoryPresenter = new FileHistoryPresenter(filePath);
+        dataModel.setFilePathPresenter(fileHistoryPresenter);
+        HistoryAffectedFileCellRender cellRender = (HistoryAffectedFileCellRender) affectedFilesTable.getDefaultRenderer(FileStatus.class);
+        cellRender.setFilePresenter(fileHistoryPresenter);
         commitDescriptionPane.setText("");
-
-        final List<CommitCharacteristics> commitCharacteristicsVector = gitAccess.getCommitsCharacteristics(filePath);
+        
+        RenameTracker renameTracker = new RenameTracker();
+        final List<CommitCharacteristics> commitCharacteristicsVector = gitAccess.getCommitsCharacteristics(filePath, renameTracker);
 
         Repository repo = gitAccess.getRepository();
+        
         CommitsAheadAndBehind commitsAheadAndBehind = RevCommitUtil.getCommitsAheadAndBehind(repo,
             repo.getFullBranch());
 
@@ -663,16 +681,18 @@ public class HistoryPanel extends JPanel {
           historyTable.setModel(historyModel);
           updateHistoryTableWidths();
 
+          historyTable.setDefaultRenderer(PlotCommit.class, graphCellRender);
           historyTable.setDefaultRenderer(CommitCharacteristics.class, renderer);
           historyTable.setDefaultRenderer(Date.class, new DateTableCellRenderer(UIUtil.DATE_FORMAT_PATTERN));
           TableColumn authorColumn = historyTable.getColumn(translator.getTranslation(Tags.AUTHOR));
           authorColumn.setCellRenderer(createAuthorColumnRenderer());
-
           historyTable.setRowHeight(rh);
         });
 
-        revisionDataUpdater = new RowHistoryTableSelectionListener(getUpdateDelay(), historyTable,
-            commitDescriptionPane, commitCharacteristicsVector, affectedFilesTable);
+        revisionDataUpdater = new RowHistoryTableSelectionListener(getUpdateDelay(), 
+        	historyTable, commitDescriptionPane, commitCharacteristicsVector, 
+        	affectedFilesTable, renameTracker
+        );
         historyTable.getSelectionModel().addListSelectionListener(revisionDataUpdater);
 
         // Install hyperlink listener.
@@ -836,21 +856,25 @@ public class HistoryPanel extends JPanel {
    * Distribute widths to the columns according to their content.
    */
   private void updateHistoryTableWidths() {
+	int graphColWidth = HiDPIUtil.scaleWidth(50); // NOSONAR
     int dateColWidth = HiDPIUtil.scaleWidth(100); // NOSONAR
     int authorColWidth = HiDPIUtil.scaleWidth(120); // NOSONAR
     int commitIdColWidth = HiDPIUtil.scaleWidth(80); // NOSONAR
 
     TableColumnModel tcm = historyTable.getColumnModel();
-    TableColumn column = tcm.getColumn(0);
-    column.setPreferredWidth(historyTable.getWidth() - authorColWidth - authorColWidth - dateColWidth);
+    TableColumn column = tcm.getColumn(HistoryCommitTableModel.COMMIT_GRAPH);
+    column.setPreferredWidth(graphColWidth);
+    
+    column = tcm.getColumn(HistoryCommitTableModel.COMMIT_MESSAGE);
+    column.setPreferredWidth(historyTable.getWidth() - authorColWidth - authorColWidth - dateColWidth - graphColWidth);
 
-    column = tcm.getColumn(1);
+    column = tcm.getColumn(HistoryCommitTableModel.DATE);
     column.setPreferredWidth(dateColWidth);
 
-    column = tcm.getColumn(2);
+    column = tcm.getColumn(HistoryCommitTableModel.AUTHOR);
     column.setPreferredWidth(authorColWidth);
 
-    column = tcm.getColumn(3);
+    column = tcm.getColumn(HistoryCommitTableModel.COMMIT_ABBREVIATED_ID);
     column.setPreferredWidth(commitIdColWidth);
   }
 
@@ -889,6 +913,7 @@ public class HistoryPanel extends JPanel {
     });
   }
 
+ 
   /**
    * @return the table with the affected files.
    */

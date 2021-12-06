@@ -47,37 +47,24 @@ public class StagingResourcesTableModel extends AbstractTableModel {
 	 */
 	private List<FileStatus> filesStatuses = Collections.synchronizedList(new ArrayList<>());
 	
-	/**
-	 * The path for which history is shown.
-	 */
-	private String searchedPath = null;
 
-  /**
+	/**
 	 * Compares file statuses.
 	 */
 	private final Comparator<FileStatus> fileStatusComparator = (f1, f2) -> {
-	  int comparationResult = 0;
-	  
-	  if(searchedPath != null && searchedPath.length() > 0) {
-	    boolean file1IsFiltered = !searchedPath.equals(f1.getFileLocation()) &&
-	        !f1.getFileLocation().startsWith(searchedPath + "/", 0);
-	    boolean file2IsFiltered = !searchedPath.equals(f2.getFileLocation()) &&
-	        !f2.getFileLocation().startsWith(searchedPath + "/", 0);
-	    comparationResult = Boolean.compare(file1IsFiltered, file2IsFiltered);
-	  }
-	  
-	  if(comparationResult == 0) {
-	    // Both are filtered or both are matched. Second level sort.
-	    comparationResult = f1.getChangeType().compareTo(f2.getChangeType());
-	    if(comparationResult == 0) {
-	      // Same change type. Third level sort.
-	      comparationResult = f1.getFileLocation().compareTo(f2.getFileLocation());
-	    }
-	  }
-	  
-	  return comparationResult;
-  };
+		int comparationResult = 0;
 
+		// Both are filtered or both are matched. Second level sort.
+		comparationResult = f1.getChangeType().compareTo(f2.getChangeType());
+		if(comparationResult == 0) {
+			// Same change type. Third level sort.
+			comparationResult = f1.getFileLocation().compareTo(f2.getFileLocation());
+		}
+
+		return comparationResult;
+	};
+
+	
 	/**
 	 * <code>true</code> if this model presents the resources from the index.
 	 * <code>false</code> if it presents the modified resources that can be put in the index.
@@ -345,17 +332,5 @@ public class StagingResourcesTableModel extends AbstractTableModel {
 	  return -1;
 	}
 
-	/**
-	 * Sets the priority path. The files with this paths will be displayed first.
-	 * If no value is set, this sort criterion will not be considered.
-	 * 
-	 * @param searchedPath  The searched path.
-	 */
-	public void setSearchedPath(String searchedPath) {
-    this.searchedPath = searchedPath;
-
-    fireTableRowsDeleted(0, getRowCount());
-    this.filesStatuses.sort(fileStatusComparator);
-    fireTableRowsInserted(0, getRowCount());
-  }
+	
 }

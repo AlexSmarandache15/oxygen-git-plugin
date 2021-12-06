@@ -15,7 +15,7 @@ import com.oxygenxml.git.service.entities.FileStatus;
 import com.oxygenxml.git.service.entities.GitChangeType;
 import com.oxygenxml.git.view.history.CommitCharacteristics;
 import com.oxygenxml.git.view.history.HistoryCommitTableModel;
-import com.oxygenxml.git.view.staging.StagingResourcesTableModel;
+import com.oxygenxml.git.view.history.HistoryTableAffectedFilesModel;
 
 /**
  * UI level tests for history.
@@ -70,7 +70,7 @@ public class HistoryPanel2Test extends HistoryPanelTestBase {
       // Invoke the Diff action to see if the built URLs are O.K.
       //---------------
       
-      StagingResourcesTableModel affectedFilesModel = (StagingResourcesTableModel) historyPanel.getAffectedFilesTable().getModel();
+      HistoryTableAffectedFilesModel affectedFilesModel = (HistoryTableAffectedFilesModel) historyPanel.getAffectedFilesTable().getModel();
       FileStatus fileStatus = affectedFilesModel.getFilesStatuses().get(0);
       
       CommitCharacteristics cc = model.getAllCommits().get(0);
@@ -134,7 +134,7 @@ public class HistoryPanel2Test extends HistoryPanelTestBase {
       // Invoke the Diff action to see if the built URLs are O.K.
       //---------------
       
-      StagingResourcesTableModel affectedFilesModel = (StagingResourcesTableModel) historyPanel.getAffectedFilesTable().getModel();
+      HistoryTableAffectedFilesModel affectedFilesModel = (HistoryTableAffectedFilesModel) historyPanel.getAffectedFilesTable().getModel();
       FileStatus fileStatus = affectedFilesModel.getFilesStatuses().get(0);
       
       CommitCharacteristics cc = model.getAllCommits().get(0);
@@ -194,7 +194,7 @@ public class HistoryPanel2Test extends HistoryPanelTestBase {
         "[Compare_file_with_previous_version, "
         + "Compare_file_with_working_tree_version, Open_this_version_of_filename, "
         + "Open_the_working_copy_version_of, Create_branch..., "
-        + "Create_Tag_For_This_Commit, Revert_Commit, Reset_branch_to_this_commit...]",
+        + "Create_Tag..., Checkout..., Revert_Commit, Reset_branch_to_this_commit...]",
         collect.toString());
 
   }

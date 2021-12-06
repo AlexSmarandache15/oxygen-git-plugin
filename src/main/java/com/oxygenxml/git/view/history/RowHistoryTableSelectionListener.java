@@ -3,24 +3,25 @@ package com.oxygenxml.git.view.history;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JEditorPane;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.errors.RevisionSyntaxException;
 
 import com.oxygenxml.git.service.GitAccess;
+import com.oxygenxml.git.service.GitOperationScheduler;
 import com.oxygenxml.git.service.RevCommitUtil;
 import com.oxygenxml.git.service.entities.FileStatus;
 import com.oxygenxml.git.translator.Tags;
 import com.oxygenxml.git.translator.Translator;
-import com.oxygenxml.git.view.staging.StagingResourcesTableModel;
 import com.oxygenxml.git.view.util.UIUtil;
 
 import ro.sync.exml.workspace.api.PluginWorkspaceProvider;
@@ -32,10 +33,13 @@ public class RowHistoryTableSelectionListener implements ListSelectionListener {
    * Timer Listener when selecting a row in HistoryTable.
    */
   private class TableTimerListener implements ActionListener {
-    @Override
+
+	@Override
     public void actionPerformed(ActionEvent e) {
+      
       setCommitDescription();
     }
+    
     
     /**
      * Set the commit description in a non-editable editor pane, including: CommitID,
@@ -47,6 +51,8 @@ public class RowHistoryTableSelectionListener implements ListSelectionListener {
       if (selectedRow != -1) {
         CommitCharacteristics commitCharacteristics = ((HistoryCommitTableModel) historyTable.getModel())
             .getAllCommits().get(selectedRow);
+        String searched = renameTracker.getInitialPath() != null ? renameTracker.getPath(commitCharacteristics.getPlotCommit().toObjectId()) : null;
+        filePresenter.setFilePath(searched);
         StringBuilder commitDescription = new StringBuilder();
         // Case for already committed changes.
         if (commitCharacteristics.getCommitter() != null) {
@@ -123,24 +129,28 @@ public class RowHistoryTableSelectionListener implements ListSelectionListener {
      * @param commitCharacteristics Details about the current commit.
      */
     private void updateDataModel(CommitCharacteristics commitCharacteristics) {
-      StagingResourcesTableModel dataModel = (StagingResourcesTableModel) changesTable.getModel();
-      if (GitAccess.UNCOMMITED_CHANGES != commitCharacteristics) {
-        try {
-          List<FileStatus> changes = RevCommitUtil.getChangedFiles(commitCharacteristics.getCommitId());
-          dataModel.setFilesStatus(changes);
-        } catch (GitAPIException | RevisionSyntaxException | IOException e) {
-          logger.error(e, e);
-        }
-      } else {
-        dataModel.setFilesStatus(GitAccess.getInstance().getUnstagedFiles());
-      }
+    	GitOperationScheduler.getInstance().schedule(() -> {
+    		HistoryTableAffectedFilesModel dataModel = (HistoryTableAffectedFilesModel) changesTable.getModel();
+            List<FileStatus> files = new ArrayList<>();
+            if(GitAccess.UNCOMMITED_CHANGES != commitCharacteristics) {
+            	try {
+            		files.addAll(RevCommitUtil.getChangedFiles(commitCharacteristics.getCommitId()));
+            	} catch (IOException | GitAPIException e) {
+        			LOGGER.error(e, e);
+        		}
+            } else {
+            	files.addAll(GitAccess.getInstance().getUnstagedFiles());
+            }
+        	SwingUtilities.invokeLater(() -> dataModel.setFilesStatus(files));
+    	});
     }
   }
   
-  /**
-   * Logger for logging.
-   */
-  private static final Logger logger = Logger.getLogger(RowHistoryTableSelectionListener.class);
+    
+   /**
+    * Logger for logging.
+    */
+    private static final Logger LOGGER = Logger.getLogger(RowHistoryTableSelectionListener.class);
 	/**
 	 * Fake commit URL to search for parents when using hyperlink.
 	 */
@@ -164,8 +174,20 @@ public class RowHistoryTableSelectionListener implements ListSelectionListener {
 	/**
 	 * Table that presents the resources changed inside a commit.
 	 */
-  private JTable changesTable;
-
+    private JTable changesTable;
+    
+    /**
+     * The current file history presented.
+     */
+    private final FileHistoryPresenter filePresenter;
+    
+    /**
+     * The rename tracker for presented file.
+     */
+    private final RenameTracker renameTracker;
+    
+    
+    
 	/**
 	 * Construct the SelectionListener for HistoryTable.
 	 * 
@@ -174,18 +196,23 @@ public class RowHistoryTableSelectionListener implements ListSelectionListener {
 	 * @param commitDescriptionPane       The commitDescriptionPane
 	 * @param commits                     The list of commits and their characteristics.
 	 * @param changesTable                The table that presents the files changed in a commit.
+	 * @param renameTracker               The rename tracker for presented file.
 	 */
 	public RowHistoryTableSelectionListener(
 	    int updateDelay,
 	    JTable historyTable, 
 	    JEditorPane commitDescriptionPane,
-			List<CommitCharacteristics> commits, 
-			JTable changesTable) {
+		List<CommitCharacteristics> commits, 
+		JTable changesTable,
+		RenameTracker renameTracker
+		) {
 		this.changesTable = changesTable;
 		descriptionUpdateTimer = new Timer(updateDelay, descriptionUpdateListener);
     this.descriptionUpdateTimer.setRepeats(false);
 		this.historyTable = historyTable;
 		this.commitDescriptionPane = commitDescriptionPane;
+		this.filePresenter = ((HistoryTableAffectedFilesModel)changesTable.getModel()).getFilePathPresenter();
+	    this.renameTracker = renameTracker;
 	}
 
 	@Override

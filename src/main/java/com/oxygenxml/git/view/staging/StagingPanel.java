@@ -60,6 +60,11 @@ import ro.sync.exml.workspace.api.listeners.WSEditorListener;
 public class StagingPanel extends JPanel {
 
   /**
+   * Divider size.
+   */
+  private static final int DIVIDER_SIZE = 10;
+
+  /**
    * Left and right component inset.
    */
   private static final int HORIZONTAL_INSET = 5;
@@ -196,7 +201,7 @@ public class StagingPanel extends JPanel {
 		splitPane.add(unstagedChangesPanel);
 		splitPane.add(stagedChangesPanel);
 		splitPane.add(commitPanel);
-		splitPane.setDividerSize(10);
+		splitPane.setDividerSize(DIVIDER_SIZE);
 		splitPane.setContinuousLayout(true);
 		splitPane.setOneTouchExpandable(false);
 		splitPane.setBorder(null);
@@ -207,13 +212,14 @@ public class StagingPanel extends JPanel {
 		  addToolbarPanel(gbc);
 		}
 		addWorkingCopySelectionPanel(gbc);
+		
 		addConflictButtonsPanel(gbc);
 		addSplitPanel(gbc, splitPane);
 
 		// creates the actual GUI for each panel
 		unstagedChangesPanel.createGUI();
 		stagedChangesPanel.createGUI();
-
+	    
 		addRefreshF5();
 		
 		// Listens on the save event in the Oxygen editor and updates the unstaged resources area
@@ -333,7 +339,7 @@ public class StagingPanel extends JPanel {
   private void addConflictButtonsPanel(GridBagConstraints gbc) {
     gbc.gridx = 0;
 		gbc.gridy ++;
-		gbc.insets = new Insets(10, 2, 10, 0);
+		gbc.insets = new Insets(10, 2, 10, 0); // NOSONAR
     gbc.anchor = GridBagConstraints.WEST;
     gbc.fill = GridBagConstraints.NONE;
     gbc.weightx = 1;

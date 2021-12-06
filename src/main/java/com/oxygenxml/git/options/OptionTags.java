@@ -7,7 +7,17 @@ package com.oxygenxml.git.options;
  * @author gabriel_nedianu
  *
  */
-public interface OptionTags {
+public class OptionTags {
+  
+  /**
+    * Constructor.
+    *
+    * @throws UnsupportedOperationException when invoked.
+    */
+  private OptionTags() {
+    // Private to avoid instantiations
+    throw new UnsupportedOperationException("Instantiation of this utility class is not allowed!");
+  }
   
   /**
    * <code>true</code> to automatically push to remote when committing.
@@ -105,5 +115,10 @@ public interface OptionTags {
    * The tag option for including the untracked files in the stash.
    */
   public static final String STASH_INCLUDE_UNTRACKED = "com.oxygenxml.git.stash.include.untracked";
+  
+  /**
+   * <code>true</code> if the create new branch option is selected.
+   */
+  public static final String CHECKOUT_COMMIT_SELECT_NEW_BRANCH = "com.oxygenxml.git.checkout.commit.select.new.branch";
 
 }

@@ -8,14 +8,114 @@
         <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>
         <language description="Chinese" lang="zh_CN" localeDescription="中文"/>
     </languageList>
+    <key value="Create_A_New_Branch">
+        <comment>Create a new branch option.</comment>
+        <val lang="en_US">Create a new branch</val>
+        <val lang="de_DE">Create a new branch</val>
+        <val lang="fr_FR">Create a new branch</val>
+        <val lang="ja_JP">Create a new branch</val>
+        <val lang="nl_NL">Create a new branch</val>
+        <val lang="zh_CN">Create a new branch</val>
+    </key>
+     <key value="Tag">
+        <comment>Tag.</comment>
+        <val lang="en_US">Tag</val>
+        <val lang="de_DE">Tag</val>
+        <val lang="fr_FR">Tag</val>
+        <val lang="ja_JP">Tag</val>
+        <val lang="nl_NL">Tag</val>
+        <val lang="zh_CN">Tag</val>
+    </key>
+     <key value="Local_branch_already_exists">
+        <comment>"The warning message when trying to create a branch with the same name as another
+            local branch."</comment>
+        <val lang="en_US">A local branch with the same name already exists.</val>
+        <val lang="de_DE">A local branch with the same name already exists.</val>
+        <val lang="fr_FR">A local branch with the same name already exists.</val>
+        <val lang="ja_JP">A local branch with the same name already exists.</val>
+        <val lang="nl_NL">A local branch with the same name already exists.</val>
+        <val lang="zh_CN">A local branch with the same name already exists..</val>
+    </key>
+     <key value="Uncommited_changes_when_checkout_commit">
+        <comment>The the message displayed when the checkout commit is attempted and there are uncommited changes.</comment>
+        <val lang="en_US">There are uncommited changes. Commit, stash or discard your changes before you try again.</val>
+        <val lang="de_DE">There are uncommited changes. Commit, stash or discard your changes before you try again.</val>
+        <val lang="fr_FR">There are uncommited changes. Commit, stash or discard your changes before you try again.</val>
+        <val lang="ja_JP">There are uncommited changes. Commit, stash or discard your changes before you try again.</val>
+        <val lang="nl_NL">There are uncommited changes. Commit, stash or discard your changes before you try again.</val>
+        <val lang="zh_CN">There are uncommited changes. Commit, stash or discard your changes before you try again.</val>
+    </key>
+    <key value="Detached_HEAD_Warning_Message">
+        <comment>The warning message about detached HEAD.</comment>
+        <val lang="en_US">No local branch will be created. If you want to make changes, it is recomended to create a new local branch instead.</val>
+        <val lang="de_DE">No local branch will be created. If you want to make changes, it is recomended to create to create a new local branch instead.</val>
+        <val lang="fr_FR">No local branch will be created. If you want to make changes, it is recomended to create a new local branch instead.</val>
+        <val lang="ja_JP">No local branch will be created. If you want to make changes, it is recomended to create a new local branch instead.</val>
+        <val lang="nl_NL">No local branch will be created. If you want to make changes, it is recomended to create a new local branch instead.</val>
+        <val lang="zh_CN">No local branch will be created. If you want to make changes, it is recomended to create a new local branch instead.</val>
+    </key>
+    <key value="Enter_Branch_Name">
+        <comment>The message for enter the branch name.</comment>
+        <val lang="en_US">Branch name</val>
+        <val lang="de_DE">Branch name</val>
+        <val lang="fr_FR">Branch name</val>
+        <val lang="ja_JP">Branch name</val>
+        <val lang="nl_NL">Branch name</val>
+        <val lang="zh_CN">Branch name</val>
+    </key>
+    <key value="Empty_Branch_Name">
+        <comment>The message for error when we have an empty name for branch.</comment>
+        <val lang="en_US">The branch name cannot be empty.</val>
+        <val lang="de_DE">The branch name cannot be empty.</val>
+        <val lang="fr_FR">The branch name cannot be empty.</val>
+        <val lang="ja_JP">The branch name cannot be empty.</val>
+        <val lang="nl_NL">The branch name cannot be empty.</val>
+        <val lang="zh_CN">The branch name cannot be empty.</val>
+    </key>
+    <key value="Branch_Contains_Spaces">
+        <comment>The message for error when we have a tag with spaces.</comment>
+        <val lang="en_US">Spaces are not allowed in a branch name..</val>
+        <val lang="de_DE">Spaces are not allowed in a branch name.</val>
+        <val lang="fr_FR">Spaces are not allowed in a branch name..</val>
+        <val lang="ja_JP">Spaces are not allowed in a branch name.</val>
+        <val lang="nl_NL">Spaces are not allowed in a branch name.</val>
+        <val lang="zh_CN">Spaces are not allowed in a branch name.</val>
+    </key>
+    <key value="Branch_Contains_Invalid_Chars">
+        <comment>The message for error when we have a branch with invalid chars.</comment>
+        <val lang="en_US">The branch name contains not allowed characters.</val>
+        <val lang="de_DE">The branch name contains not allowed characters.</val>
+        <val lang="fr_FR">The branch name contains not allowed characters.</val>
+        <val lang="ja_JP">The branch name contains not allowed characters.</val>
+        <val lang="nl_NL">The branch name contains not allowed characters.</val>
+        <val lang="zh_CN">The branch name contains not allowed characters.</val>
+    </key>
     <key value="Branch_manager_button_tool_tip">
         <comment>"The tool tip for the button that opens the branch manager side view."</comment>
         <val lang="en_US">Press to show the Git Branch Manager view.</val>
-        <val lang="de_DE">Press to show the Git Branch Manager view.r</val>
+        <val lang="de_DE">Press to show the Git Branch Manager view.</val>
         <val lang="fr_FR">Press to show the Git Branch Manager view.</val>
         <val lang="ja_JP">Press to show the Git Branch Manager view.</val>
         <val lang="nl_NL">Press to show the Git Branch Manager view.</val>
         <val lang="zh_CN">Press to show the Git Branch Manager view.</val>
+    </key>
+    <key value="Creation_Date">
+        <comment>Column title in list stash.</comment>
+        <val lang="en_US">Creation date</val>
+        <val lang="de_DE">Creation date</val>
+        <val lang="fr_FR">Creation date</val>
+        <val lang="ja_JP">Creation date</val>
+        <val lang="nl_NL">Creation date</val>
+        <val lang="zh_CN">Creation date</val>
+    </key>
+    <key value="Graph">
+        <comment>The title for Graph column in Git history.</comment>
+        <val lang="en_US">Graph</val>
+        <val lang="de_DE">Graph</val>
+        <val lang="fr_FR">Graph</val>
+        <val lang="ja_JP">Graph</val>
+        <val lang="nl_NL">Graph</val>
+        <val lang="zh_CN">Graph</val>
     </key>
     <key value="Pull_failed_because_conflicting_paths">
         <comment>The text is displayed when you pull but it fails because the files that are
@@ -185,7 +285,7 @@
         <val lang="zh_CN">Apply stash</val>
     </key>
 
-    <key value="Create_Tag_Commit_Title">
+    <key value="Create_Tag">
         <comment>The title for the create Tag Commit dialog</comment>
         <val lang="en_US">Create tag</val>
         <val lang="de_DE">Tag erstellen</val>
@@ -194,7 +294,7 @@
         <val lang="nl_NL">Tag maken</val>
         <val lang="zh_CN">创建标签</val>
     </key>
-    <key value="Create_Tag_Title_Label">
+    <key value="Tag_name">
         <comment>The message in the label for Tag title</comment>
         <val lang="en_US">Tag name</val>
         <val lang="de_DE">Name des Tags</val>
@@ -1325,16 +1425,6 @@
         <val lang="ja_JP">このコミットに "{0}" をリセットする</val>
         <val lang="nl_NL">Herstel "{0}" op deze commit</val>
         <val lang="zh_CN">将此提交重置为“{0}”</val>
-    </key>
-    <key value="Local_branch_already_exists">
-        <comment>"The warning message when trying to create a branch with the same name as another
-            local branch."</comment>
-        <val lang="en_US">The local branch already exists.</val>
-        <val lang="de_DE">Der lokale Zweig (branch) existiert bereits.</val>
-        <val lang="fr_FR">La branche locale existe déjà.</val>
-        <val lang="ja_JP">ローカル分岐はすでに存在します。</val>
-        <val lang="nl_NL">De lokale branch bestaat al.</val>
-        <val lang="zh_CN">本地分支已经存在.</val>
     </key>
     <key value="Delete_branch">
         <comment>"The message for branch deletion."</comment>

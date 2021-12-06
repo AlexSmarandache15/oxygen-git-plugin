@@ -40,11 +40,14 @@ import ro.sync.exml.workspace.api.standalone.ui.TextField;
  *
  */
 public class CreateTagDialog extends OKCancelDialog {
-  
   /**
    * Logger for logging.
    */
   private static final Logger logger = LogManager.getLogger(CreateTagDialog.class.getName());
+  /**
+   * Number of rows for tag message.
+   */
+  private static final int TAG_MSG_NO_OF_ROWS = 3;
   /**
    * Translator.
    */
@@ -83,7 +86,7 @@ public class CreateTagDialog extends OKCancelDialog {
   public CreateTagDialog() {
     super(PluginWorkspaceProvider.getPluginWorkspace() != null
         ? (JFrame) PluginWorkspaceProvider.getPluginWorkspace().getParentFrame(): null,
-            TRANSLATOR.getTranslation(Tags.CREATE_TAG_COMMIT_TITLE),
+            TRANSLATOR.getTranslation(Tags.CREATE_TAG),
             true);
 
     // Create GUI
@@ -119,7 +122,7 @@ public class CreateTagDialog extends OKCancelDialog {
     int leftInset = UIConstants.COMPONENT_LEFT_LARGE_PADDING;
     
     // Tag title label.
-    JLabel label = new JLabel(TRANSLATOR.getTranslation(Tags.CREATE_TAG_TITLE_LABEL) + ":");
+    JLabel label = new JLabel(TRANSLATOR.getTranslation(Tags.TAG_NAME) + ":");
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.gridx = 0;
     gbc.gridy = 0;
@@ -165,7 +168,10 @@ public class CreateTagDialog extends OKCancelDialog {
     // Tag message field.
     tagMessageField = new JTextArea();
     JScrollPane tagMessageScrollPane = new JScrollPane(tagMessageField);
-    tagMessageScrollPane.setPreferredSize(new Dimension(MESSAGE_PREFFERED_WIDTH, 3* tagMessageField.getPreferredSize().height));
+    tagMessageScrollPane.setPreferredSize(
+        new Dimension(
+            MESSAGE_PREFFERED_WIDTH,
+            TAG_MSG_NO_OF_ROWS * tagMessageField.getPreferredSize().height));
     tagMessageField.selectAll();
     gbc.gridx ++;
     gbc.weightx = 1;
@@ -187,7 +193,7 @@ public class CreateTagDialog extends OKCancelDialog {
     gbc.weighty = 0; 
     gbc.anchor = GridBagConstraints.WEST;
     gbc.fill = GridBagConstraints.NONE;
-    gbc.insets = new Insets(7, 0, 0, 0);
+    gbc.insets = new Insets(7, 0, 0, 0); // NOSONAR
     panel.add(pushTagCheckBox, gbc);
 
   }

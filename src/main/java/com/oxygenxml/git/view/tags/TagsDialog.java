@@ -11,6 +11,7 @@ import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.util.List;
 
+import javax.swing.Action;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
@@ -36,6 +37,7 @@ import com.oxygenxml.git.service.NoRepositorySelected;
 import com.oxygenxml.git.translator.Tags;
 import com.oxygenxml.git.translator.Translator;
 import com.oxygenxml.git.view.dialog.FileStatusDialog;
+import com.oxygenxml.git.view.history.actions.CheckoutCommitAction;
 
 import ro.sync.exml.workspace.api.PluginWorkspaceProvider;
 import ro.sync.exml.workspace.api.standalone.ui.OKCancelDialog;
@@ -81,6 +83,12 @@ public class TagsDialog extends OKCancelDialog {
    * The button used to delete a local tag
    */
   private JButton deleteButton;
+  
+  /**
+   * The button used to checkout a tag.
+   */
+  private JButton checkoutButton;
+  
 
   /**
    * Constructor
@@ -163,19 +171,34 @@ public class TagsDialog extends OKCancelDialog {
     buttonsGridBagConstraints.anchor = GridBagConstraints.SOUTHEAST;
     buttonsGridBagConstraints.fill = GridBagConstraints.NONE;
     buttonsGridBagConstraints.insets = new Insets(UIConstants.INDENT_5PX, 0, UIConstants.INDENT_5PX, UIConstants.INDENT_5PX);
+    checkoutButton = new JButton(TRANSLATOR.getTranslation(Tags.CHECKOUT + "..."));
+    checkoutButton.addActionListener(e -> {
+    	 int selectedRow = (tagsTable.getSelectedRow());
+		  if(selectedRow >= 0) {
+			  GitTag tag = ((TagsTableModel)tagsTable.getModel()).getItemAt(selectedRow);
+			  String tagID = tag.getTagID();
+			  Action action = new CheckoutCommitAction(tagID);
+			  action.actionPerformed(e);
+		  }
+	});
+    
+    checkoutButton.setEnabled(false);
+    buttonsPanel.add(checkoutButton, buttonsGridBagConstraints);
+
     pushButton = new JButton(TRANSLATOR.getTranslation(Tags.PUSH));
     pushButton.addActionListener(createPushListener());
     pushButton.setEnabled(false);
+    buttonsGridBagConstraints.gridx ++;
     buttonsPanel.add(pushButton, buttonsGridBagConstraints);
-
+    
     deleteButton = new JButton(TRANSLATOR.getTranslation(Tags.DELETE));
     deleteButton.addActionListener(createDeleteListener());
     deleteButton.setEnabled(false);
 
     buttonsGridBagConstraints.gridx ++;
     buttonsGridBagConstraints.insets = new Insets(UIConstants.INDENT_5PX, 0, UIConstants.INDENT_5PX, 0);
-    buttonsPanel.add(deleteButton, buttonsGridBagConstraints);
-
+    buttonsPanel.add(deleteButton, buttonsGridBagConstraints);  
+    
     gbc.gridx = 0;
     gbc.gridy++;
     gbc.gridwidth = 1;
@@ -211,7 +234,9 @@ public class TagsDialog extends OKCancelDialog {
     //Add the listener for selecting a row
     tagsTable.getSelectionModel().addListSelectionListener(e -> {
       int selectedRow = (tagsTable.getSelectedRow());
-      if(selectedRow >= 0) {
+      boolean isSelectionValid = selectedRow >= 0;
+      checkoutButton.setEnabled(isSelectionValid);
+      if(isSelectionValid) { 	
         GitTag tag = model.getItemAt(selectedRow);
         if (!tag.isPushed()) {
           pushButton.setEnabled(true);
@@ -220,7 +245,7 @@ public class TagsDialog extends OKCancelDialog {
           pushButton.setEnabled(false);
           deleteButton.setEnabled(false);
         }
-      }
+      } 
     });
 
     //Add the listener for double clicked

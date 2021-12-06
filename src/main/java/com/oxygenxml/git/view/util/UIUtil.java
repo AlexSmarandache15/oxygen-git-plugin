@@ -28,6 +28,7 @@ import javax.swing.JTextArea;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableColumn;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.View;
@@ -35,6 +36,8 @@ import javax.swing.text.View;
 import com.oxygenxml.git.constants.Icons;
 import com.oxygenxml.git.translator.Tags;
 import com.oxygenxml.git.translator.Translator;
+import com.oxygenxml.git.view.history.HistoryAffectedFileCellRender;
+import com.oxygenxml.git.view.history.HistoryTableAffectedFilesModel;
 import com.oxygenxml.git.view.staging.StagingResourcesTableCellRenderer;
 import com.oxygenxml.git.view.staging.StagingResourcesTableModel;
 
@@ -81,6 +84,10 @@ public class UIUtil {
    * Date format.
    */
   public static final String DATE_FORMAT_PATTERN = "d MMM yyyy HH:mm";
+  /**
+   * Date format without hour.
+   */
+  public static final String DATE_FORMAT_PATTERN_WITHOUT_HOUR = "d MMM yyyy";
   /**
    * Date format with comma.
    */
@@ -195,7 +202,7 @@ public class UIUtil {
    * @return The table that presents the resources.
    */
   public static JTable createResourcesTable(
-      StagingResourcesTableModel fileTableModel, 
+      AbstractTableModel fileTableModel, 
       BooleanSupplier contextMenuShowing) {
     JTable table = new Table() {
       @Override
@@ -218,7 +225,9 @@ public class UIUtil {
     statusCol.setPreferredWidth(colWidth);
     statusCol.setMaxWidth(colWidth);
 
-    table.setDefaultRenderer(Object.class, new StagingResourcesTableCellRenderer(contextMenuShowing));
+    boolean isForHistoryTable = fileTableModel instanceof HistoryTableAffectedFilesModel;
+    table.setDefaultRenderer(Object.class, 
+    		isForHistoryTable ? new HistoryAffectedFileCellRender(contextMenuShowing) : new StagingResourcesTableCellRenderer(contextMenuShowing));
 
     return table;
   }

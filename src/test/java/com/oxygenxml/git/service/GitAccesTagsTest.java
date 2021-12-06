@@ -1,5 +1,6 @@
 package com.oxygenxml.git.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -17,9 +18,14 @@ import org.eclipse.jgit.transport.URIish;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import com.oxygenxml.git.utils.script.RepoGenerationScript;
 import com.oxygenxml.git.view.history.CommitCharacteristics;
+
+import ro.sync.exml.workspace.api.PluginWorkspaceProvider;
+import ro.sync.exml.workspace.api.standalone.StandalonePluginWorkspace;
+import ro.sync.exml.workspace.api.util.ColorTheme;
 
 
 /**
@@ -55,12 +61,49 @@ public class GitAccesTagsTest {
   @Before
   public void init() throws Exception {
     gitAccess = GitAccess.getInstance();
+    StandalonePluginWorkspace pluginWSMock = Mockito.mock(StandalonePluginWorkspace.class);
+    ColorTheme colorTheme = Mockito.mock(ColorTheme.class);
+    Mockito.when(colorTheme.isDarkTheme()).thenReturn(false);
+    Mockito.when(pluginWSMock.getColorTheme()).thenReturn(colorTheme);
+    PluginWorkspaceProvider.setPluginWorkspace(pluginWSMock);
     
     URL script = getClass().getClassLoader().getResource("scripts/git_tags_script.txt");
     File wcTree = new File(LOCAL_TEST_REPOSITORY);
     RepoGenerationScript.generateRepository(script, wcTree);
   }
 
+  
+  /**
+   * <p><b>Description:</b> Tests case when a commit has multiple tags associated with it </p>
+   * <br><br>
+   * <p><b>Bug ID:</b> EXM-49330</p>
+   *
+   * @author Alex_Smarandache 
+   * 
+   * @throws Exception
+   */
+  @Test
+  public void testMultipleTagsOnACommit() throws Exception {
+    List<CommitCharacteristics> commitsCharacteristics = gitAccess.getCommitsCharacteristics(null);
+    
+    //Make 3tags on the same commit
+    String commitID = commitsCharacteristics.get(0).getCommitId();
+    gitAccess.tagCommit("Tag1", "lala", commitID);
+    gitAccess.tagCommit("Tag2", "", commitID);
+    gitAccess.tagCommit("Tag3", "bum", commitID);
+    String tagsShortcommitID = commitsCharacteristics.get(0).getCommitAbbreviatedId();
+    
+    Map<String, List<String>> tagsMap = gitAccess.getTagMap(gitAccess.getRepository());
+    List<String> tagsList = tagsMap.get(tagsShortcommitID);
+    
+    assertEquals(3, tagsList.size());
+    assertTrue(tagsMap.get(tagsShortcommitID).contains("Tag1") 
+        && tagsMap.get(tagsShortcommitID).contains("Tag2")
+        && tagsMap.get(tagsShortcommitID).contains("Tag3")
+    );
+  }
+  
+  
   /**
    * <p><b>Description:</b> Test create a tag method and existsTag method </p>
    * <p><b>Bug ID:</b> EXM-46109</p>

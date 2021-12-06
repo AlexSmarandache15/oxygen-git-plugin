@@ -1,6 +1,5 @@
 package com.oxygenxml.git.view.stash;
 
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -14,14 +13,13 @@ import java.awt.event.MouseEvent;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JCheckBox;
-import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -32,10 +30,8 @@ import javax.swing.JToolTip;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
-import javax.swing.border.Border;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
@@ -60,6 +56,7 @@ import com.oxygenxml.git.view.util.UIUtil;
 
 import ro.sync.exml.workspace.api.PluginWorkspaceProvider;
 import ro.sync.exml.workspace.api.standalone.ui.Button;
+import ro.sync.exml.workspace.api.standalone.ui.OKCancelDialog;
 import ro.sync.exml.workspace.api.standalone.ui.Table;
 
 
@@ -69,7 +66,7 @@ import ro.sync.exml.workspace.api.standalone.ui.Table;
  * @author Alex_Smarandache
  *
  */
-public class ListStashesDialog extends JDialog {
+public class ListStashesDialog extends OKCancelDialog {
 
   /**
    * Logger for logging.
@@ -115,6 +112,11 @@ public class ListStashesDialog extends JDialog {
    * The size of column id.
    */
   private static final int COLUMN_ID_SIZE = 30;
+  
+  /**
+   * The size of column date.
+   */
+  private static final int COLUMN_DATE_SIZE = 65;
 
   /**
    * The table with the stashes.
@@ -129,7 +131,7 @@ public class ListStashesDialog extends JDialog {
   /**
    * The model for the files table.
    */
-  private StashFilesTableModel affectedStashFilesTableModel;
+  private FilesTableModel affectedStashFilesTableModel;
 
   /**
    * The model for the stashes table.
@@ -191,7 +193,7 @@ public class ListStashesDialog extends JDialog {
         Translator.getInstance().getTranslation(Tags.STASHES),
         false);
 
-    this.add(createStashesPanel());
+    getContentPane().add(createStashesPanel());
     pack();
 
     JFrame parentFrame = PluginWorkspaceProvider.getPluginWorkspace() != null ? 
@@ -203,6 +205,10 @@ public class ListStashesDialog extends JDialog {
     
     setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
     setMinimumSize(new Dimension(DIALOG_MINIMUM_WIDTH, DIALOG_MINIMUM_HEIGHT));
+    
+    getOkButton().setVisible(false);
+    getCancelButton().setText(TRANSLATOR.getTranslation(Tags.CLOSE));
+    this.setResizable(true);
   }
   
 
@@ -246,6 +252,7 @@ public class ListStashesDialog extends JDialog {
     JScrollPane tableStashesScrollPane = new JScrollPane(stashesTable);
     tableStashesScrollPane.setPreferredSize(new Dimension(STASHES_TABLE_DEFAULT_WIDTH, STASHES_TABLE_DEFAULT_HEIGHT));
     tableStashesScrollPane.setMinimumSize(tableStashesScrollPane.getPreferredSize());
+    tableStashesScrollPane.setMaximumSize(tableStashesScrollPane.getPreferredSize());
     constraints.gridx = 0;
     constraints.gridy++;
     constraints.weightx = 1;
@@ -262,6 +269,7 @@ public class ListStashesDialog extends JDialog {
     JScrollPane changesOfStashScrollPane = new JScrollPane(affectedFilesTable);
     changesOfStashScrollPane.setPreferredSize(new Dimension(FILES_LIST_DEFAULT_WIDTH, STASHES_TABLE_DEFAULT_HEIGHT));
     changesOfStashScrollPane.setMinimumSize(changesOfStashScrollPane.getPreferredSize());
+    changesOfStashScrollPane.setMaximumSize(changesOfStashScrollPane.getPreferredSize());
     constraints.gridx++;
     constraints.weightx = 1;
     constraints.weighty = 1;
@@ -291,22 +299,6 @@ public class ListStashesDialog extends JDialog {
     constraints.insets = new Insets(0, 0, 0, 0);
     stashesPanel.add(emptyPanel, constraints);
 
-    Button closeButton = new Button(TRANSLATOR.getTranslation(Tags.CLOSE));
-    closeButton.addActionListener(e -> this.dispose());
-    constraints.gridx = 0;
-    constraints.gridy++;
-    constraints.gridwidth = 2;
-    constraints.weightx = 0;
-    constraints.weighty = 0;
-    constraints.fill = GridBagConstraints.NONE;
-    constraints.anchor = GridBagConstraints.EAST;
-    constraints.insets = new Insets(
-        UIConstants.COMPONENT_TOP_PADDING, 
-        0, 
-        UIConstants.COMPONENT_BOTTOM_PADDING,
-        UIConstants.COMPONENT_RIGHT_LARGE_PADDING);
-    stashesPanel.add(closeButton, constraints);
-
     stashesTable.setRowSelectionInterval(0, 0);
     
     return stashesPanel;
@@ -333,8 +325,17 @@ public class ListStashesDialog extends JDialog {
    */
   private Table createAffectedFilesTable() {
 
-    affectedStashFilesTableModel = new StashFilesTableModel();
-
+    affectedStashFilesTableModel = new FilesTableModel();
+    final Comparator<FileStatus> comparator = (f1, f2) -> {
+        int comparationResult = f1.getChangeType().compareTo(f2.getChangeType());
+        if(comparationResult == 0) {
+          // Same change type. Third level sort.
+          comparationResult = f1.getFileLocation().compareTo(f2.getFileLocation());
+        }
+        return comparationResult;
+    };
+    affectedStashFilesTableModel.setComparator(comparator);
+      
     Table filesTable = new Table(affectedStashFilesTableModel) {
       @Override
       public JToolTip createToolTip() {
@@ -574,8 +575,10 @@ public class ListStashesDialog extends JDialog {
 
     tableOfStashes.setFillsViewportHeight(true);
     TableColumnModel columnModel = tableOfStashes.getColumnModel();
-    columnModel.getColumn(StashesTableModel.STASH_INDEX_COLUMN).setCellRenderer(new StashIndexRender());
-    columnModel.getColumn(StashesTableModel.STASH_DESCRIPTION_COLUMN).setCellRenderer(new StashMessageRender());
+    columnModel.getColumn(StashesTableModel.STASH_INDEX_COLUMN).setCellRenderer(StashCellRendersFactory.getIndexCellRender());
+    columnModel.getColumn(StashesTableModel.STASH_DESCRIPTION_COLUMN).setCellRenderer(StashCellRendersFactory.getMessageCellRender());
+    columnModel.getColumn(StashesTableModel.STASH_DATE_COLUMN).setCellRenderer(StashCellRendersFactory.getDateCellRender());
+    
     tableOfStashes.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     tableOfStashes.getTableHeader().setReorderingAllowed(false);
 
@@ -585,7 +588,14 @@ public class ListStashesDialog extends JDialog {
     tableOfStashes.getSelectionModel().addListSelectionListener(e -> {
       setStashTableButtonsEnabled(true);
       int selectedRow = tableOfStashes.getSelectedRow();
-      affectedStashFilesTableModel.updateTable(selectedRow);
+      if(selectedRow >= 0) {
+    	  try {
+    		  affectedStashFilesTableModel.setFilesStatus(
+    				  RevCommitUtil.getChangedFiles(stashesTableModel.getStashes().get(selectedRow).getName()));
+    	  } catch (IOException | GitAPIException exc) {
+    		  LOGGER.error(exc, exc);
+    	  }
+      }
     });
 
     stashesTableModel.fireTableDataChanged();
@@ -593,8 +603,12 @@ public class ListStashesDialog extends JDialog {
     columnModel.getColumn(StashesTableModel.STASH_INDEX_COLUMN).setMinWidth(COLUMN_ID_SIZE);
     columnModel.getColumn(StashesTableModel.STASH_INDEX_COLUMN).setPreferredWidth(COLUMN_ID_SIZE);
     columnModel.getColumn(StashesTableModel.STASH_INDEX_COLUMN).setMaxWidth(COLUMN_ID_SIZE);
-
-    tableOfStashes.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+    
+    TableColumn dateColumn = columnModel.getColumn(StashesTableModel.STASH_DATE_COLUMN);
+    dateColumn.setMinWidth(COLUMN_DATE_SIZE);
+    dateColumn.setMaxWidth(dateColumn.getPreferredWidth());
+    
+    tableOfStashes.setAutoResizeMode(JTable.AUTO_RESIZE_NEXT_COLUMN);
 
     return tableOfStashes;
   }
@@ -640,82 +654,7 @@ public class ListStashesDialog extends JDialog {
   }
 
 
-  /**
-   * A custom render for Stash message.
-   *
-   * @author Alex_Smarandache
-   */
-  private static class StashMessageRender extends DefaultTableCellRenderer {
     
-    /**
-     * The border for padding.
-     */
-    private final Border padding = BorderFactory.createEmptyBorder(
-        0, 
-        UIConstants.COMPONENT_LEFT_PADDING, 
-        0, 
-        UIConstants.COMPONENT_RIGHT_PADDING
-    );
-    
-    @Override
-    public Component getTableCellRendererComponent(JTable table,
-        Object value,
-        boolean isSelected,
-        boolean hasFocus,
-        int row,
-        int column) {  
-      
-      super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-      
-      setText((String) value);
-      setToolTipText((String) value);
-      
-      setBorder(BorderFactory.createCompoundBorder(getBorder(), padding));
-      
-      return this;
-    }
-    
-    @Override
-    public JToolTip createToolTip() {
-      return UIUtil.createMultilineTooltip(this).orElseGet(super::createToolTip);
-    }
-  }
-
-  
-  /**
-   * A custom render for Stash index.
-   *
-   * @author Alex_Smarandache
-   */
-  private static class StashIndexRender extends DefaultTableCellRenderer {
-    
-    /**
-     * The border for padding.
-     */
-    private static final Border PADDING = BorderFactory.createEmptyBorder(
-        0, 
-        UIConstants.COMPONENT_LEFT_PADDING, 
-        0, 
-        UIConstants.COMPONENT_RIGHT_PADDING
-    );
-    
-    @Override
-    public Component getTableCellRendererComponent(JTable table,
-        Object value,
-        boolean isSelected,
-        boolean hasFocus,
-        int row,
-        int column) {  
-      
-      super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-      
-      setBorder(BorderFactory.createCompoundBorder(getBorder(), PADDING));
-      
-      return this;
-    }
-    
-  }
-  
 
   /**
    * Creates the actions for buttons.
@@ -743,7 +682,7 @@ public class ListStashesDialog extends JDialog {
             List<RevCommit> stashes = null;
 
             try {
-              stashes = new ArrayList<>(GitAccess.getInstance().listStashes());
+              stashes = stashesTableModel.getStashes();
               selectedFile = ((FileStatus) affectedFilesTable.getValueAt(selectedFilesIndex, 1));
               String filePath = selectedFile.getFileLocation();
 
